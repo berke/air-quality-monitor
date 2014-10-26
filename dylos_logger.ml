@@ -19,6 +19,8 @@ struct
   let port = ref "/dev/ttyUSB0"
   let baud = ref 9600
   let log_file = ref "dylos.log"
+  let session_file : string option ref = ref None
+  let heartbeat_delay = ref 600.0
 end
 
 module Spec =
@@ -40,6 +42,14 @@ struct
       "--log-file",
       Set_string log_file,
       "<path> Set log file";
+
+      "--session-file",
+      String(fun u -> session_file := Some u),
+      "<path> Use session file to provide a persistent serial number";
+
+      "--heartbeat-delay",
+      Set_float heartbeat_delay,
+      "<float> Interval between heartbeats";
     ]
 end
 
@@ -139,24 +149,63 @@ let main () =
   let t0 = Unix.gettimeofday () in
   let counter = ref 0 in
 
+  lwt session =
+    match !Opt.session_file with
+    | None -> return 0
+    | Some fn ->
+      lwt session = 
+        catch
+          (fun () ->
+             lwt st = Lwt_unix.stat fn in
+             if st.Unix.st_kind = Unix.S_REG then
+               Lwt_io.with_file
+                 ~perm:0o755
+                 ~mode:Lwt_io.input
+                 fn
+                 (fun ic ->
+                    lwt u = Lwt_io.read_line ic in
+                    return @@ int_of_string u) 
+             else
+               (
+                 info_f "Session file %S is not regular" fn >>
+                 return 0
+               )
+          )
+          (fun e ->
+             error_f "Cannot read from session file %S: %s"
+               fn
+               (Printexc.to_string e) >>
+             return 0)
+      in
+      let session' = session + 1 in
+      Lwt_io.with_file
+        ~flags:Unix.([O_DSYNC;O_TRUNC;O_CREAT;O_WRONLY])
+        ~perm:0o755
+        ~mode:Lwt_io.output
+        fn
+        (fun oc -> Lwt_io.fprintf oc "%d" session') >>
+      return session
+  in
+
   let rec heartbeat_task () =
     let dt = Unix.gettimeofday () -. t0 in
     (
       if dt > 0.0 then
-        info_f "%d readings in %f s (%f reading / s)"
+        info_f "Session %d: %d readings in %f s (%f reading / s)"
+          session
           !counter
           dt
           (float !counter /. dt)
       else
         info_f "Starting"
     ) >>
-    Lwt_unix.sleep 30.0 >>=
+    Lwt_unix.sleep !heartbeat_delay >>=
     heartbeat_task
   in
 
   let main oc =
     let t = Unix.gettimeofday () in
-    Lwt_io.fprintf oc "%.3f -1 -1\n" t >>
+    Lwt_io.fprintf oc "%d %d %.3f -1 -1\n" session !counter t >>
     Lwt_io.flush oc >>
 
     let rec loop () =
@@ -175,8 +224,8 @@ let main () =
         | Some(x,y) ->
           incr counter;
           let t = Unix.gettimeofday () in
-          info_f "%.3f %d %d\n" t x y >>
-          Lwt_io.fprintf oc "%.3f %d %d\n" t x y >>
+          info_f "%d %d %.3f %d %d\n" session !counter t x y >>
+          Lwt_io.fprintf oc "%d %d %.3f %d %d\n" session !counter t x y >>
           Lwt_io.flush oc
       )
       >>
