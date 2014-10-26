@@ -11,7 +11,6 @@
 *)
 
 open Lwt
-open Lwt_react
 open Lwt_log
 open Printf
 
@@ -49,6 +48,7 @@ let line_splitter ?(limit=128) ic =
   let rec loop () =
     lwt c = Lwt_io.read_char ic in
     match c with
+    | '\n' -> loop ()
     | '\r' ->
       let u = Buffer.contents b in
       Buffer.clear b;
@@ -136,22 +136,48 @@ let main () =
 
   let next_line = line_splitter serial_r_ch in
 
+  let t0 = Unix.gettimeofday () in
+  let counter = ref 0 in
+
+  let rec heartbeat_task () =
+    let dt = Unix.gettimeofday () -. t0 in
+    (
+      if dt > 0.0 then
+        info_f "%d readings in %f s (%f reading / s)"
+          !counter
+          dt
+          (float !counter /. dt)
+      else
+        info_f "Starting"
+    ) >>
+    Lwt_unix.sleep 30.0 >>=
+    heartbeat_task
+  in
+
   let main oc =
+    let t = Unix.gettimeofday () in
+    Lwt_io.fprintf oc "%.3f -1 -1\n" t >>
+    Lwt_io.flush oc >>
+
     let rec loop () =
       lwt u = next_line () in
-      info_f "<< %S" u >>
       (
         match
-          try
-            Scanf.scanf "%d,%d" (fun x y -> Some(x,y))
-          with
-          | _ -> None
-          with
-          | None -> error_f "Cannot parse %S" u
-          | Some(x,y) ->
-            let t = Unix.gettimeofday () in
-            Lwt_io.fprintf oc "%.3f %d %d\n" t x y >>
-            Lwt_io.flush oc
+          (
+
+            try
+              Scanf.sscanf u "%d,%d" (fun x y -> Some(x,y))
+            with
+            | _ -> None
+          )
+        with
+        | None -> error_f "Cannot parse %S" u
+        | Some(x,y) ->
+          incr counter;
+          let t = Unix.gettimeofday () in
+          info_f "%.3f %d %d\n" t x y >>
+          Lwt_io.fprintf oc "%.3f %d %d\n" t x y >>
+          Lwt_io.flush oc
       )
       >>
       loop ()
@@ -159,6 +185,7 @@ let main () =
     loop ()
   in
 
+  heartbeat_task () <&>
   Lwt_io.with_file
     ~flags:Unix.([O_DSYNC;O_APPEND;O_CREAT;O_WRONLY])
     ~perm:0o755
