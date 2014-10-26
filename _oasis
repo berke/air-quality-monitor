@@ -1,0 +1,14 @@
+OASISFormat: 0.3
+Name:        OBCS
+Version:     0.1
+Synopsis:    Dylos Logger
+Authors:     Berke Durak
+License:     http://lambda-diode.com/
+Plugins:     DevFiles (0.3), META (0.3)
+
+Executable dylos_logger
+  Path:       .
+  BuildTools: ocamlbuild
+  MainIs:     dylos_logger.ml
+  BuildDepends: lwt, lwt.log, lwt.unix, lwt.syntax
+  CompiledObject: best
