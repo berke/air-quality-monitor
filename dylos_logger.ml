@@ -204,10 +204,6 @@ let main () =
   in
 
   let main oc =
-    let t = Unix.gettimeofday () in
-    Lwt_io.fprintf oc "%d %d %.3f -1 -1\n" session !counter t >>
-    Lwt_io.flush oc >>
-
     let rec loop () =
       lwt u = next_line () in
       (
@@ -223,9 +219,22 @@ let main () =
         | None -> error_f "Cannot parse %S" u
         | Some(x,y) ->
           incr counter;
-          let t = Unix.gettimeofday () in
-          info_f "%d %d %.3f %d %d\n" session !counter t x y >>
-          Lwt_io.fprintf oc "%d %d %.3f %d %d\n" session !counter t x y >>
+          let open Unix in
+          let t = gettimeofday () in
+          let tm = localtime t in
+          Lwt_io.fprintf oc
+            "%5d %8d %04d-%02d-%02d %02d:%02d:%02d %16.4f %5d %5d\n"
+            session !counter
+            (tm.tm_year + 1900)
+            (tm.tm_mon + 1)
+            tm.tm_mday
+            tm.tm_hour
+            tm.tm_min
+            tm.tm_sec
+            t
+            x
+            y
+            >>
           Lwt_io.flush oc
       )
       >>
