@@ -10,5 +10,5 @@ Executable dylos_logger
   Path:       .
   BuildTools: ocamlbuild
   MainIs:     dylos_logger.ml
-  BuildDepends: lwt, lwt.log, lwt.unix, lwt.syntax
+  BuildDepends: lwt, lwt.log, lwt.unix
   CompiledObject: best
