@@ -1,0 +1,5 @@
+(executable
+ (name dylos_logger)
+  (public_name dylos_logger)
+  (modules "dylos_logger")
+  (libraries lwt lwt.unix))

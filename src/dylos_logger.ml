@@ -4,15 +4,11 @@
 
    Tool for logging the output of Dylos air quality monitors
 
-   Copyright (C) 2014-2016 Berke Durak
-
-   Author: Berke Durak <berke.durak@gmail.com>
+   Copyright (c) 2014-2019, Oguz Berke Antoine DURAK <bd@exhrd.fr>
 
  *)
 
 open Lwt
-open Lwt_log
-open Printf
 
 module Opt =
   struct
@@ -52,6 +48,21 @@ module Spec =
 	  "<float> Interval between heartbeats";
 	]
   end
+
+let logger pfx fmt =
+  let buf = Buffer.create 256 in
+  Buffer.clear buf;
+  Printf.bprintf buf "%s " pfx;
+  Printf.kbprintf
+    (fun _ ->
+      Lwt_io.printl (Buffer.contents buf)
+    )
+    buf
+    fmt
+
+let info_f fmt = logger ">>>" fmt
+let error_f fmt = logger "ERR" fmt
+let debug_f fmt = logger "DBG" fmt
 
 let line_splitter ?(limit=128) ic =
   let b = Buffer.create 128 in

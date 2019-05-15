@@ -1,0 +1,14 @@
+opam-version: "1.2"
+version: "1.0"
+maintainer: "bd@exhrd.fr"
+authors: ["Berke Durak"]
+homepage: "https://exhrd.fr/"
+bug-reports: "https://exhrd.fr/"
+dev-repo: "git://"
+license: "BSD"
+build: [
+  ["dune" "build" "--root" "." "-j" jobs "@install"]
+]
+depends: [
+  "lwt"
+]
