@@ -267,7 +267,7 @@ let _ =
         (Printf.sprintf "Usage: %s [options]" Sys.argv.(0));
     with
     | Arg.Bad b ->
-       Printf.fprintf Pervasives.stderr "%s\n%s\n"
+       Printf.fprintf Stdlib.stderr "%s\n%s\n"
 		      b
 		      (Arg.usage_string Spec.specs "Usage:")
   );
