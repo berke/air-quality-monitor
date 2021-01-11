@@ -231,7 +231,7 @@ let main () =
 	   let t = gettimeofday () in
 	   let tm = localtime t in
 	   Lwt_io.fprintf oc
-			  "%5d %8d %04d-%02d-%02d %02d:%02d:%02d %16.4f %5d %5d\n"
+			  "%5d %8d %04d %02d %02d %02d %02d %02d %16.4f %5d %5d\n"
 			  session !counter
 			  (tm.tm_year + 1900)
 			  (tm.tm_mon + 1)
